@@ -169,13 +169,23 @@ function mostrarEquipoVoluntariado() {
 // Función para mostrar el formulario de voluntariado
 function mostrarFormularioVoluntariado() {
   const nombreVoluntario = prompt("Por favor, ingresa tu nombre:");
-  const emailVoluntario = prompt("Por favor, ingresa tu correo electrónico:");
 
-  if (nombreVoluntario && emailVoluntario) {
+  let emailVoluntario = "";
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  while (!emailVoluntario || !emailRegex.test(emailVoluntario)) {
+    emailVoluntario = prompt("Por favor, ingresa tu correo electrónico:");
+    if (!emailVoluntario || !emailRegex.test(emailVoluntario)) {
+      alert("Debes ingresar un correo electrónico válido.");
+    }
+  }
+
+  if (nombreVoluntario) {
     alert(`¡Gracias por unirte a nuestro equipo de Voluntariados, ${nombreVoluntario}! Te contactaremos pronto a ${emailVoluntario}.`);
   } else {
     alert("Información no válida. Inténtalo de nuevo.");
   }
+
   mostrarMenuVoluntariado(); // Volver al menú de voluntariado
 }
 
