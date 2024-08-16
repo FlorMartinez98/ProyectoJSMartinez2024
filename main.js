@@ -1,19 +1,19 @@
-// Variables y Arrays 
+// Variables y Arrays
 let nombreUsuario = "";
-const mascotas = [
-  { nombre: "Max", tipo: "perro", edad: 2, raza: "Labrador" },
-  { nombre: "Luna", tipo: "perro", edad: 1, raza: "Beagle" },
-  { nombre: "Rodolfo", tipo: "perro", edad: 3, raza: "Bulldog" },
-  { nombre: "Simba", tipo: "gato", edad: 2, raza: "Siames" },
-  { nombre: "Mia", tipo: "gato", edad: 1, raza: "Persa" },
-  { nombre: "Coco", tipo: "gato", edad: 3, raza: "Maine Coon" },
-];
-const voluntarios = [
-  { nombre: "Ana", rol: "Coordinadora" },
-  { nombre: "Pedro", rol: "Encargado de Adopciones" },
-  { nombre: "María", rol: "Encargada de Donaciones" },
-  { nombre: "Luis", rol: "Voluntario de Cuidados Especiales" },
-];
+
+// Función para cargar los datos de las mascotas desde el archivo JSON
+async function cargarMascotas() {
+  try {
+    const response = await fetch('mascotas.json');
+    if (!response.ok) {
+      throw new Error('No se pudo cargar el archivo de mascotas.');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error al cargar las mascotas:', error);
+    return [];
+  }
+}
 
 // Función principal para saludar al usuario y comenzar la aplicación
 function saludarUsuario() {
@@ -23,16 +23,23 @@ function saludarUsuario() {
     mostrarSaludo();
     mostrarMenuPrincipal();
   } else {
-    while (!nombreUsuario) {
-      nombreUsuario = prompt("¿Cuál es tu nombre?");
-      if (!nombreUsuario) {
-        alert("Por favor, ingresa tu nombre.");
-      } else {
-        localStorage.setItem('nombreUsuario', nombreUsuario);
+    Swal.fire({
+      title: '¿Cuál es tu nombre?',
+      input: 'text',
+      inputPlaceholder: 'Ingresa tu nombre',
+      allowOutsideClick: false,
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Por favor, ingresa tu nombre';
+        }
+        return null;
       }
-    }
-    mostrarSaludo();
-    mostrarMenuPrincipal();
+    }).then((result) => {
+      nombreUsuario = result.value;
+      localStorage.setItem('nombreUsuario', nombreUsuario);
+      mostrarSaludo();
+      mostrarMenuPrincipal();
+    });
   }
 }
 
@@ -66,7 +73,10 @@ function mostrarMenuPrincipal() {
 
 // Función para salir
 function salir() {
-  alert("Gracias por visitar Salvando Huellitas. ¡Hasta pronto!");
+  Swal.fire({
+    title: 'Gracias por visitar Salvando Huellitas. ¡Hasta pronto!',
+    icon: 'info'
+  });
   localStorage.removeItem('nombreUsuario');
   document.getElementById('greeting').innerText = '';
   document.getElementById('menu').innerHTML = '';
@@ -84,15 +94,66 @@ function mostrarMenuMascotas() {
 }
 
 // Función para mostrar las mascotas según el tipo seleccionado
-function mostrarMascotas(tipoMascota) {
+async function mostrarMascotas(tipoMascota) {
+  const mascotas = await cargarMascotas();
   const mascotasFiltradas = mascotas.filter(mascota => mascota.tipo === tipoMascota);
+  
   let mensajeMascotas = `Mascotas disponibles (${tipoMascota}s):<br><br>`;
 
   mascotasFiltradas.forEach(mascota => {
-    mensajeMascotas += `Nombre: ${mascota.nombre}<br>Edad: ${mascota.edad} años<br>Raza: ${mascota.raza}<br><br>`;
+    mensajeMascotas += `
+      <div>
+        <img src="${mascota.imagen}" alt="${mascota.nombre}" style="width: 200px; height: 200px;">
+        <p>Nombre: ${mascota.nombre}</p>
+        <p>Edad: ${mascota.edad} años</p>
+        <p>Raza: ${mascota.raza}</p>
+        <button onclick="mostrarFormularioAdopcion('${mascota.nombre}', '${mascota.imagen}')">Adoptar</button>
+      </div><br>
+    `;
   });
 
   document.getElementById('content').innerHTML = mensajeMascotas + '<button onclick="mostrarMenuMascotas()">Volver</button>';
+}
+
+// Función para validar el formato del correo electrónico
+function validarEmail(email) {
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return regex.test(email);
+}
+
+// Función para mostrar el formulario de adopción
+function mostrarFormularioAdopcion(nombreMascota, imagenMascota) {
+  Swal.fire({
+    title: `Formulario de Adopción - ${nombreMascota}`,
+    html: `
+      <img src="${imagenMascota}" alt="${nombreMascota}" style="width: 200px; height: 200px;">
+      <input type="text" id="nombreAdoptante" class="swal2-input" placeholder="Tu Nombre">
+      <input type="email" id="correoAdoptante" class="swal2-input" placeholder="Tu Correo Electrónico">
+    `,
+    focusConfirm: false,
+    preConfirm: () => {
+      const nombreAdoptante = document.getElementById('nombreAdoptante').value;
+      const correoAdoptante = document.getElementById('correoAdoptante').value;
+
+      if (!nombreAdoptante || !correoAdoptante) {
+        Swal.showValidationMessage('Por favor, completa todos los campos');
+        return false;
+      }
+
+      if (!validarEmail(correoAdoptante)) {
+        Swal.showValidationMessage('Por favor, ingresa un correo electrónico válido');
+        return false;
+      }
+
+      return { nombreAdoptante, correoAdoptante };
+    }
+  }).then((result) => {
+    if (result.isConfirmed) {
+      const { nombreAdoptante, correoAdoptante } = result.value;
+      Swal.fire(`Gracias, ${nombreAdoptante}! Nos pondremos en contacto contigo a través del correo ${correoAdoptante} para los siguientes pasos de la adopción.`);
+      // Aquí podrías agregar la lógica para enviar un correo con la información de la adopción
+    }
+  });
 }
 
 // Función para mostrar el menú de tipos de donaciones y procesar la selección
@@ -118,13 +179,20 @@ function mostrarMenuOpcionesDinero() {
 
 // Función para confirmar la donación de dinero
 function confirmarDonacion(monto) {
-  const confirmacion = confirm(`¿Confirmas tu donación de $${monto}?`);
-  if (confirmacion) {
-    alert("¡Gracias por tu donación! Ayudarás a muchos animales.");
-  } else {
-    alert("Tu donación ha sido cancelada.");
-  }
-  mostrarMenuDonaciones(); // Volver al menú de donaciones
+  Swal.fire({
+    title: `¿Confirmas tu donación de $${monto}?`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, donar',
+    cancelButtonText: 'Cancelar'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      Swal.fire('¡Gracias por tu donación! Ayudarás a muchos animales.');
+    } else {
+      Swal.fire('Tu donación ha sido cancelada.');
+    }
+    mostrarMenuDonaciones(); // Volver al menú de donaciones
+  });
 }
 
 // Función para mostrar las opciones de donación de objetos y procesar la selección
@@ -140,54 +208,98 @@ function mostrarMenuOpcionesObjetos() {
 
 // Función para confirmar la donación de objetos
 function confirmarDonacionObjeto(tipoObjeto) {
-  const confirmacion = confirm(`¿Confirmas tu donación de ${tipoObjeto}?`);
-  if (confirmacion) {
-    alert("¡Gracias por tu donación! Ayudarás a muchos animales.");
-  } else {
-    alert("Tu donación ha sido cancelada.");
-  }
-  mostrarMenuDonaciones(); // Volver al menú de donaciones
+  Swal.fire({
+    title: `¿Confirmas tu donación de ${tipoObjeto}?`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, donar',
+    cancelButtonText: 'Cancelar'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      Swal.fire('¡Gracias por tu donación! Ayudarás a muchos animales.');
+    } else {
+      Swal.fire('Tu donación ha sido cancelada.');
+    }
+    mostrarMenuDonaciones(); // Volver al menú de donaciones
+  });
 }
 
 // Función para mostrar el menú de voluntariado y procesar la selección
 function mostrarMenuVoluntariado() {
   const menu = `
-    <button onclick="mostrarEquipoVoluntariado()">Ver Equipo de Voluntarios</button>
-    <button onclick="mostrarFormularioVoluntariado()">Formar Parte del Equipo de Voluntarios</button>
+    <button onclick="mostrarVoluntarios()">Ver Voluntarios</button>
+    <button onclick="mostrarFormularioVoluntariado()">Ser Voluntario</button>
     <button onclick="mostrarMenuPrincipal()">Volver al menú anterior</button>
   `;
   document.getElementById('content').innerHTML = menu;
 }
 
-// Función para mostrar el equipo de voluntarios
-function mostrarEquipoVoluntariado() {
-  const mensajeEquipo = voluntarios.map(voluntario => 
-    `${voluntario.nombre} - ${voluntario.rol}`).join('<br>');
-  document.getElementById('content').innerHTML = `Nuestro equipo de voluntarios está compuesto por personas apasionadas por ayudar a los animales:<br><br>${mensajeEquipo}<br><button onclick="mostrarMenuVoluntariado()">Volver</button>`;
+// Función para mostrar los voluntarios actuales
+async function mostrarVoluntarios() {
+  const voluntarios = await cargarVoluntarios();
+  let mensajeVoluntarios = 'Equipo de Voluntarios:<br><br>';
+
+  voluntarios.forEach(voluntario => {
+    mensajeVoluntarios += `
+      <div>
+        <p>Nombre: ${voluntario.nombre}</p>
+        <p>Rol: ${voluntario.rol}</p>
+      </div><br>
+    `;
+  });
+
+  document.getElementById('content').innerHTML = mensajeVoluntarios + '<button onclick="mostrarMenuVoluntariado()">Volver</button>';
 }
 
-// Función para mostrar el formulario de voluntariado
-function mostrarFormularioVoluntariado() {
-  const nombreVoluntario = prompt("Por favor, ingresa tu nombre:");
-
-  let emailVoluntario = "";
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  while (!emailVoluntario || !emailRegex.test(emailVoluntario)) {
-    emailVoluntario = prompt("Por favor, ingresa tu correo electrónico:");
-    if (!emailVoluntario || !emailRegex.test(emailVoluntario)) {
-      alert("Debes ingresar un correo electrónico válido.");
+// Función para cargar los datos de los voluntarios desde el archivo JSON
+async function cargarVoluntarios() {
+  try {
+    const response = await fetch('voluntarios.json');
+    if (!response.ok) {
+      throw new Error('No se pudo cargar el archivo de voluntarios.');
     }
+    return await response.json();
+  } catch (error) {
+    console.error('Error al cargar los voluntarios:', error);
+    return [];
   }
+}
 
-  if (nombreVoluntario) {
-    alert(`¡Gracias por unirte a nuestro equipo de Voluntariados, ${nombreVoluntario}! Te contactaremos pronto a ${emailVoluntario}.`);
-  } else {
-    alert("Información no válida. Inténtalo de nuevo.");
-  }
+// Función para mostrar el formulario para ser voluntario
+function mostrarFormularioVoluntariado() {
+  Swal.fire({
+    title: 'Formulario para ser Voluntario',
+    html: `
+      <input type="text" id="nombreVoluntario" class="swal2-input" placeholder="Tu Nombre">
+      <input type="email" id="correoVoluntario" class="swal2-input" placeholder="Tu Correo Electrónico">
+      <input type="text" id="rolVoluntario" class="swal2-input" placeholder="Tu Rol o Especialidad">
+    `,
+    focusConfirm: false,
+    preConfirm: () => {
+      const nombreVoluntario = document.getElementById('nombreVoluntario').value;
+      const correoVoluntario = document.getElementById('correoVoluntario').value;
+      const rolVoluntario = document.getElementById('rolVoluntario').value;
 
-  mostrarMenuVoluntariado(); // Volver al menú de voluntariado
+      if (!nombreVoluntario || !correoVoluntario || !rolVoluntario) {
+        Swal.showValidationMessage('Por favor, completa todos los campos');
+        return false;
+      }
+
+      if (!validarEmail(correoVoluntario)) {
+        Swal.showValidationMessage('Por favor, ingresa un correo electrónico válido');
+        return false;
+      }
+
+      return { nombreVoluntario, correoVoluntario, rolVoluntario };
+    }
+  }).then((result) => {
+    if (result.isConfirmed) {
+      const { nombreVoluntario, correoVoluntario, rolVoluntario } = result.value;
+      Swal.fire(`Gracias, ${nombreVoluntario}! Nos pondremos en contacto contigo a través del correo ${correoVoluntario} para coordinar tu rol como voluntario.`);
+      // Aquí podrías agregar la lógica para enviar un correo con la información del voluntario
+    }
+  });
 }
 
 // Iniciar la aplicación
-saludarUsuario();
+document.addEventListener('DOMContentLoaded', saludarUsuario);

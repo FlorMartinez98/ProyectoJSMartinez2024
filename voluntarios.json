@@ -1,0 +1,6 @@
+[
+    { "nombre": "Ana", "rol": "Coordinadora" },
+    { "nombre": "Pedro", "rol": "Encargado de Adopciones" },
+    { "nombre": "María", "rol": "Encargada de Donaciones" },
+    { "nombre": "Luis", "rol": "Voluntario de Cuidados Especiales" }
+]  
